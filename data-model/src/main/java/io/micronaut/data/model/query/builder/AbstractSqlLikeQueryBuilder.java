@@ -883,6 +883,18 @@ public abstract class AbstractSqlLikeQueryBuilder implements QueryBuilder {
         } else {
             columnName = propertyPath.getPath();
         }
+        appendProjectionFunctionName(queryString, functionName, tableAlias, columnName);
+    }
+
+    /**
+     * Appends function name (AVG, SUM, etc.) projection.
+     *
+     * @param queryString the SQL string builder
+     * @param functionName the function name
+     * @param tableAlias the table alias
+     * @param columnName the column name
+     */
+    protected void appendProjectionFunctionName(StringBuilder queryString, String functionName, String tableAlias, String columnName) {
         queryString.append(functionName)
             .append(OPEN_BRACKET)
             .append(tableAlias)

@@ -60,7 +60,8 @@ import java.util.function.Function;
  */
 public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
 
-    private static final String SELECT_COUNT = "VALUE COUNT(1)";
+    private static final String VALUE = "VALUE ";
+    private static final String SELECT_COUNT = VALUE + "COUNT(1)";
     private static final String JOIN = " JOIN ";
     private static final String IN = " IN ";
 
@@ -126,6 +127,14 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
     @Override
     protected void appendProjectionRowCount(StringBuilder queryString, String logicalName) {
         queryString.append(SELECT_COUNT);
+    }
+
+    @Override
+    protected void appendProjectionFunctionName(StringBuilder queryString, String functionName, String tableAlias, String columnName) {
+        if (DISTINCT.equals(functionName) || COUNT_DISTINCT.equals(functionName)) {
+            throw new IllegalStateException("Cosmos Db does not support DISTINCT keyword");
+        }
+        super.appendProjectionFunctionName(queryString, VALUE + functionName, tableAlias, columnName);
     }
 
     @Override
@@ -349,7 +358,7 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
 
     @Override
     protected void selectAllColumns(QueryState queryState, StringBuilder queryBuffer) {
-        queryBuffer.append("DISTINCT VALUE ").append(queryState.getRootAlias());
+        queryBuffer.append(DISTINCT).append(SPACE).append(VALUE).append(queryState.getRootAlias());
     }
 
     @Override

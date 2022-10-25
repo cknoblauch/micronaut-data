@@ -328,6 +328,24 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
                 return BigDecimal.class;
             case TIME:
                 return Time.class;
+            case BOOLEAN_ARRAY:
+                return Boolean[].class;
+            case LONG_ARRAY:
+                return Long[].class;
+            case FLOAT_ARRAY:
+                return Float[].class;
+            case SHORT_ARRAY:
+                return Short[].class;
+            case DOUBLE_ARRAY:
+                return Double[].class;
+            case CHARACTER_ARRAY:
+                return Character[].class;
+            case INTEGER_ARRAY:
+                return Integer[].class;
+            case STRING_ARRAY:
+                return String[].class;
+            case BYTE_ARRAY:
+                return Byte[].class;
             default:
                 return Object.class;
         }
