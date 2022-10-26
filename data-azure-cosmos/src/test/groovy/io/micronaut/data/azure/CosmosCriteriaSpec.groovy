@@ -242,11 +242,11 @@ interface MyRepository {
             property      | predicate          | expectedWhereQuery
             "registered"  | "isTrue"           | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered = TRUE)'
             "registered"  | "isFalse"          | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered = FALSE)'
-            "registered"  | "isNull"           | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered IS NULL)'
-            "registered"  | "isNotNull"        | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered IS NOT NULL)'
-            "lastName"    | "isNotNull"        | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.lastName IS NOT NULL)'
-            "lastName"    | "isEmptyString"    | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.lastName IS NULL OR family_.lastName = \'\')'
-            "lastName"    | "isNotEmptyString" | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.lastName IS NOT NULL AND family_.lastName <> \'\')'
+            "registered"  | "isNull"           | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (IS_NULL(family_.registered))'
+            "registered"  | "isNotNull"        | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (IS_NULL(family_.registered) = false)'
+            "lastName"    | "isNotNull"        | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (IS_NULL(family_.lastName) = false)'
+            "lastName"    | "isEmptyString"    | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (IS_NULL(family_.lastName) OR IS_DEFINED(family_.lastName) = false OR family_.lastName = \'\')'
+            "lastName"    | "isNotEmptyString" | 'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (IS_NULL(family_.lastName) = false AND IS_DEFINED(family_.lastName) AND family_.lastName <> \'\')'
     }
 
     @Unroll

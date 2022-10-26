@@ -63,6 +63,35 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
     private static final String SELECT_COUNT = VALUE + "COUNT(1)";
     private static final String JOIN = " JOIN ";
     private static final String IN = " IN ";
+    private static final String IS_NULL = "IS_NULL";
+    private static final String IS_DEFINED = "IS_DEFINED";
+
+    {
+        addCriterionHandler(QueryModel.IsNull.class, expression(IS_NULL));
+        addCriterionHandler(QueryModel.IsNotNull.class, (ctx, criterion) -> {
+            ctx.query().append(IS_NULL).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(CLOSE_BRACKET).append(" = false");
+        });
+        addCriterionHandler(QueryModel.IsEmpty.class, (ctx, criterion) -> {
+            ctx.query().append(IS_NULL).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(CLOSE_BRACKET).append(" OR ").append(IS_DEFINED).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(CLOSE_BRACKET).append(" = false OR ");
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(" = ''");
+        });
+        addCriterionHandler(QueryModel.IsNotEmpty.class, (ctx, criterion) -> {
+            ctx.query().append(IS_NULL).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(CLOSE_BRACKET).append(" = false AND ").append(IS_DEFINED).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(CLOSE_BRACKET).append(" AND ");
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(criterion));
+            ctx.query().append(" <> ''");
+        });
+    }
 
     @Creator
     public CosmosSqlQueryBuilder(AnnotationMetadata annotationMetadata) {
@@ -74,6 +103,14 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
      */
     public CosmosSqlQueryBuilder() {
         super();
+    }
+
+    private <T extends QueryModel.PropertyNameCriterion> CriterionHandler<T> expression(String expression) {
+        return (ctx, expressionCriterion) -> {
+            ctx.query().append(expression).append(OPEN_BRACKET);
+            appendPropertyRef(ctx.query(), ctx.getRequiredProperty(expressionCriterion));
+            ctx.query().append(CLOSE_BRACKET);
+        };
     }
 
     @Override

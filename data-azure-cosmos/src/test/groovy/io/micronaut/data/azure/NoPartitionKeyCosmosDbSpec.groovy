@@ -45,6 +45,15 @@ class NoPartitionKeyCosmosDbSpec extends Specification implements AzureCosmosTes
             entity2.grade = 4
             repository.save(entity2)
         when:
+            def maxGrade = repository.findMaxGradeByIdIn(Arrays.asList(entity1.id, entity2.id))
+        then:
+            maxGrade == 4
+        when:
+            def entities = repository.findByGradeIn(Arrays.asList(entity2.grade))
+        then:
+            entities.size() == 1
+            entities[0].id == entity2.id
+        when:
             def optEntity1 = repository.findById(entity1.id)
             def optEntity2 = repository.findById(entity2.id)
         then:
@@ -71,7 +80,7 @@ class NoPartitionKeyCosmosDbSpec extends Specification implements AzureCosmosTes
         then:
             optEntity2.present
         when:
-            def entities = repository.findAllByName(optEntity2.get().name)
+            entities = repository.findAllByName(optEntity2.get().name)
         then:
             entities.size() > 0
             def foundEntity2 = entities.stream().filter(i -> i.id == entity2.id).findFirst()

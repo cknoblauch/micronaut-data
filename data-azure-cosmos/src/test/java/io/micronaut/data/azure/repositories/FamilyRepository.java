@@ -70,6 +70,8 @@ public abstract class FamilyRepository implements PageableRepository<Family, Str
 
     public abstract List<Family> findByIdNotIn(List<String> ids);
 
+    public abstract List<Family> findByLastNameLike(String lastName);
+
     static class Specifications {
 
         public static PredicateSpecification<Family> lastNameEquals(String lastName) {

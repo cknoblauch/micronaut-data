@@ -193,7 +193,12 @@ class CosmosBasicSpec extends Specification implements AzureCosmosTestProperties
             optFamily2.get().children.size() == 2
             optFamily2.get().address
         when:
-            def families = familyRepository.findByChildrenPetsType("cat")
+            def families = familyRepository.findByLastNameLike("Ander%")
+        then:
+            families.size() > 0
+            families[0].id == FAMILY1_ID
+        when:
+            families = familyRepository.findByChildrenPetsType("cat")
         then:
             families.size() > 0
             families[0].id == FAMILY1_ID
