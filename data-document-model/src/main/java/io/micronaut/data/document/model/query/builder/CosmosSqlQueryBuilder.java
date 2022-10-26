@@ -128,8 +128,8 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
 
     @Override
     protected void appendProjectionFunctionName(StringBuilder queryString, String functionName, String tableAlias, String columnName) {
-        if (DISTINCT.equals(functionName) || COUNT_DISTINCT.equals(functionName)) {
-            throw new IllegalStateException("Cosmos Db does not support DISTINCT keyword");
+        if (COUNT_DISTINCT.equals(functionName)) {
+            throw new IllegalStateException("Cosmos Db does not support COUNT(DISTINCT) keywords");
         }
         super.appendProjectionFunctionName(queryString, VALUE + functionName, tableAlias, columnName);
     }
