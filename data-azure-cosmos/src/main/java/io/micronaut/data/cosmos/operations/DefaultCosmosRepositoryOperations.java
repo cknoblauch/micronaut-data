@@ -82,7 +82,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -152,7 +151,7 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
         try {
             final SqlParameter param = new SqlParameter("@ROOT_ID", id.toString());
             final SqlQuerySpec querySpec = new SqlQuerySpec(FIND_ONE_DEFAULT_QUERY, param);
-            logQuery(querySpec, Collections.singletonList(param));
+            logQuery(querySpec);
             final CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
             if (isIdPartitionKey(persistentEntity)) {
                 options.setPartitionKey(new PartitionKey(id.toString()));
@@ -179,18 +178,17 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
      * Gets cosmos results for given prepared query.
      *
      * @param preparedQuery the prepared query
-     * @param parameterList the Cosmos Sql parameter list
+     * @param querySpec the Cosmos Sql query spec
      * @param itemsType the result iterator items type
      * @param <T> The query entity type
      * @param <R> The query result type
      * @param <I> the Cosmos iterator items type
      * @return CosmosPagedIterable with values of I type
      */
-    private <T, R, I> CosmosPagedIterable<I> getCosmosResults(PreparedQuery<T, R> preparedQuery, List<SqlParameter> parameterList, Class<I> itemsType) {
+    private <T, R, I> CosmosPagedIterable<I> getCosmosResults(PreparedQuery<T, R> preparedQuery, SqlQuerySpec querySpec, Class<I> itemsType) {
         RuntimePersistentEntity<T> persistentEntity = runtimeEntityRegistry.getEntity(preparedQuery.getRootEntity());
         CosmosContainer container = getContainer(persistentEntity);
-        SqlQuerySpec querySpec = new SqlQuerySpec(preparedQuery.getQuery(), parameterList);
-        logQuery(querySpec, parameterList);
+        logQuery(querySpec);
         CosmosQueryRequestOptions requestOptions = new CosmosQueryRequestOptions();
         preparedQuery.getParameterInRole(Constants.PARTITION_KEY_ROLE, PartitionKey.class).ifPresent(requestOptions::setPartitionKey);
         return container.queryItems(querySpec, requestOptions, itemsType);
@@ -199,11 +197,11 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
     @Override
     public <T, R> R findOne(@NonNull PreparedQuery<T, R> preparedQuery) {
         try {
-            List<SqlParameter> paramList = new ParameterBinder().bindParameters(preparedQuery);
+            SqlQuerySpec querySpec = new ParameterBinder().bindParameters(preparedQuery);
             boolean dtoProjection = preparedQuery.isDtoProjection();
             boolean isEntity = preparedQuery.getResultDataType() == DataType.ENTITY;
             if (isEntity || dtoProjection) {
-                CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, paramList, ObjectNode.class);
+                CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, querySpec, ObjectNode.class);
                 Iterator<ObjectNode> iterator = result.iterator();
                 if (iterator.hasNext()) {
                     ObjectNode item = iterator.next();
@@ -218,7 +216,7 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
                 }
             } else {
                 DataType dataType = preparedQuery.getResultDataType();
-                CosmosPagedIterable<?> result = getCosmosResults(preparedQuery, paramList, getDataTypeClass(dataType));
+                CosmosPagedIterable<?> result = getCosmosResults(preparedQuery, querySpec, getDataTypeClass(dataType));
                 Iterator<?> iterator = result.iterator();
                 if (iterator.hasNext()) {
                     Object item = iterator.next();
@@ -246,8 +244,8 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
 
     @Override
     public <T> boolean exists(@NonNull PreparedQuery<T, Boolean> preparedQuery) {
-        List<SqlParameter> paramList = new ParameterBinder().bindParameters(preparedQuery);
-        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, paramList, ObjectNode.class);
+        SqlQuerySpec querySpec = new ParameterBinder().bindParameters(preparedQuery);
+        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, querySpec, ObjectNode.class);
         Iterator<ObjectNode> iterator = result.iterator();
         return iterator.hasNext();
     }
@@ -279,9 +277,9 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
             Spliterator<R> spliterator;
             boolean dtoProjection = preparedQuery.isDtoProjection();
             boolean isEntity = preparedQuery.getResultDataType() == DataType.ENTITY;
-            List<SqlParameter> paramList = new ParameterBinder().bindParameters(preparedQuery);
+            SqlQuerySpec querySpec = new ParameterBinder().bindParameters(preparedQuery);
             if (isEntity || dtoProjection) {
-                CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, paramList, ObjectNode.class);
+                CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, querySpec, ObjectNode.class);
                 Iterator<ObjectNode> iterator = result.iterator();
                 Argument<R> argument;
                 if (dtoProjection) {
@@ -293,7 +291,7 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
                     finished, iterator, argument);
             } else {
                 DataType dataType = preparedQuery.getResultDataType();
-                CosmosPagedIterable<?> result = getCosmosResults(preparedQuery, paramList, getDataTypeClass(dataType));
+                CosmosPagedIterable<?> result = getCosmosResults(preparedQuery, querySpec, getDataTypeClass(dataType));
                 Iterator<?> iterator = result.iterator();
                 Class<R> resultType = preparedQuery.getResultType();
                 spliterator = new CustomResultTypeSpliterator<>(Long.MAX_VALUE,
@@ -388,7 +386,7 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
         }
         List<String> updatePropertyList = Arrays.asList(update.split(","));
         ParameterBinder parameterBinder = new ParameterBinder(true, updatePropertyList);
-        List<SqlParameter> parameterList = parameterBinder.bindParameters(preparedQuery);
+        SqlQuerySpec querySpec = parameterBinder.bindParameters(preparedQuery);
         Map<String, Object> propertiesToUpdate = parameterBinder.getPropertiesToUpdate();
         if (propertiesToUpdate.isEmpty()) {
             LOG.warn("No properties found to be updated for Cosmos Db entity {} and query [{}]", persistentEntity.getName(), preparedQuery.getQuery());
@@ -396,7 +394,7 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
         }
         CosmosContainer container = getContainer(persistentEntity);
         Optional<PartitionKey> optPartitionKey = preparedQuery.getParameterInRole(Constants.PARTITION_KEY_ROLE, PartitionKey.class);
-        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, parameterList, ObjectNode.class);
+        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, querySpec, ObjectNode.class);
         // Update/replace using provided partition key or partition key calculated from each item
         List<ObjectNode> items = new ArrayList<>();
         for (ObjectNode item : result) {
@@ -439,8 +437,8 @@ final class DefaultCosmosRepositoryOperations extends AbstractCosmosOperations i
         RuntimePersistentEntity<?> persistentEntity = runtimeEntityRegistry.getEntity(preparedQuery.getRootEntity());
         CosmosContainer container = getContainer(persistentEntity);
         Optional<PartitionKey> optPartitionKey = preparedQuery.getParameterInRole(Constants.PARTITION_KEY_ROLE, PartitionKey.class);
-        List<SqlParameter> parameterList = new ParameterBinder().bindParameters(preparedQuery);
-        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, parameterList, ObjectNode.class);
+        SqlQuerySpec querySpec = new ParameterBinder().bindParameters(preparedQuery);
+        CosmosPagedIterable<ObjectNode> result = getCosmosResults(preparedQuery, querySpec, ObjectNode.class);
         int deletedCount = executeBulk(container, result, BulkOperationType.DELETE, persistentEntity, optPartitionKey);
         return Optional.of(deletedCount);
     }

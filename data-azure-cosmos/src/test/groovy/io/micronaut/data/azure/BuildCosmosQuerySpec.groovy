@@ -95,7 +95,7 @@ interface FamilyRepository extends GenericRepository<Family, String> {
         findByChildrenFirstNameQuery == "SELECT DISTINCT VALUE family_ FROM family family_ JOIN family_children_ IN family_.children WHERE (family_children_.firstName = @p1)"
         findByChildrenPetsGivenNameOrderByChildrenPetsTypeQuery == "SELECT DISTINCT VALUE family_ FROM family family_ JOIN family_children_ IN family_.children JOIN family_children_pets_ IN family_children_.pets WHERE (family_children_pets_.givenName = @p1) ORDER BY family_children_pets_.type ASC"
         findChildrenByChildrenPetsGivenNameQuery == "SELECT family_children_.firstName,family_children_.gender,family_children_.grade FROM family family_ JOIN family_children_ IN family_.children JOIN family_children_pets_ IN family_children_.pets WHERE (family_children_pets_.givenName = @p1)"
-        findByIdNotInQuery == "SELECT DISTINCT VALUE family_ FROM family family_ WHERE (NOT ARRAY_CONTAINS(@p1,family_.id))"
+        findByIdNotInQuery == "SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.id NOT IN (@p1))"
     }
 
     void "test build delete query"() {
@@ -129,8 +129,8 @@ interface FamilyRepository extends GenericRepository<Family, String> {
         def deleteQueryMethod = repository.getRequiredMethod("delete", Family)
         then:
         deleteByIdQuery == "SELECT *  FROM family  family_ WHERE (family_.id = @p1)"
-        deleteByIdsQuery == "SELECT *  FROM family  family_ WHERE ( ARRAY_CONTAINS(@p1,family_.id))"
-        deleteByIdNotInQuery == "SELECT *  FROM family  family_ WHERE (NOT ARRAY_CONTAINS(@p1,family_.id))"
+        deleteByIdsQuery == "SELECT *  FROM family  family_ WHERE (family_.id IN (@p1))"
+        deleteByIdNotInQuery == "SELECT *  FROM family  family_ WHERE (family_.id NOT IN (@p1))"
         deleteAllQuery == "SELECT *  FROM family  family_"
         !deleteQueryMethod.getAnnotation(Query)
     }

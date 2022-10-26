@@ -80,5 +80,9 @@ public abstract class FamilyRepository implements PageableRepository<Family, Str
             return (root, criteriaBuilder) -> root.get("id").in(Arrays.asList(ids));
         }
 
+        public static PredicateSpecification<Family> idsNotIn(String... ids) {
+            return (root, criteriaBuilder) -> root.get("id").in(Arrays.asList(ids)).not();
+        }
+
     }
 }

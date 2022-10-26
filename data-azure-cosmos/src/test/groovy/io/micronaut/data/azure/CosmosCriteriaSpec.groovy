@@ -163,8 +163,8 @@ interface MyRepository {
                     'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered = TRUE) ORDER BY family_.registeredDate DESC,family_.lastName ASC',
                     'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered = TRUE)',
                     'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.registered = TRUE AND family_.registered = TRUE)',
-                    'SELECT DISTINCT VALUE family_ FROM family family_ WHERE ( ARRAY_CONTAINS(@p1,family_.lastName))',
-                    'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (NOT ARRAY_CONTAINS(@p1,family_.lastName))',
+                    'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.lastName IN (@p1))',
+                    'SELECT DISTINCT VALUE family_ FROM family family_ WHERE (family_.lastName NOT IN (@p1))',
             ]
     }
 

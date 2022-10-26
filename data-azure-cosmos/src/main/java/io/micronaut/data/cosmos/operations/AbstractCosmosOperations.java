@@ -44,6 +44,7 @@ import io.micronaut.data.model.PersistentProperty;
 import io.micronaut.data.model.PersistentPropertyPath;
 import io.micronaut.data.model.query.builder.sql.SqlQueryBuilder;
 import io.micronaut.data.model.runtime.AttributeConverterRegistry;
+import io.micronaut.data.model.runtime.DelegatingQueryParameterBinding;
 import io.micronaut.data.model.runtime.PreparedQuery;
 import io.micronaut.data.model.runtime.QueryParameterBinding;
 import io.micronaut.data.model.runtime.RuntimeEntityRegistry;
@@ -84,6 +85,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -200,12 +202,11 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
      * Logs Cosmos Db SQL query being executed along with parameter values (debug level).
      *
      * @param querySpec the SQL query spec
-     * @param params the SQL parameters
      */
-    protected void logQuery(SqlQuerySpec querySpec, Iterable<SqlParameter> params) {
+    protected void logQuery(SqlQuerySpec querySpec) {
         if (QUERY_LOG.isDebugEnabled()) {
             QUERY_LOG.debug("Executing query: {}", querySpec.getQueryText());
-            for (SqlParameter param : params) {
+            for (SqlParameter param : querySpec.getParameters()) {
                 QUERY_LOG.debug("Parameter: name={}, value={}", param.getName(), param.getValue(Object.class));
             }
         }
@@ -406,6 +407,7 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
         private final List<String> updatingProperties;
 
         private final Map<String, Object> propertiesToUpdate = new HashMap<>();
+        private String sqlQuery;
 
         ParameterBinder() {
             this.updateQuery = false;
@@ -417,11 +419,22 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
             this.updatingProperties = updateProperties;
         }
 
-        <T, R> List<SqlParameter> bindParameters(PreparedQuery<T, R> preparedQuery) {
+        /**
+         * Returns {@link SqlQuerySpec} after binding parameters for {@link PreparedQuery}.
+         * In some cases might change {@link PreparedQuery#getQuery()} if needed to override parameters for IN/NOT IN.
+         * For that reason this method returns @{@link SqlQuerySpec} that can be used to execute directly against Cosmos Db.
+         *
+         * @param preparedQuery the prepared query
+         * @param <T> The entity type of prepared query
+         * @param <R> The result type of prepared query
+         * @return SqlQuerySpec with bound parameters
+         */
+        <T, R> SqlQuerySpec bindParameters(PreparedQuery<T, R> preparedQuery) {
             boolean isRawQuery = isRawQuery(preparedQuery);
             RuntimePersistentEntity<T> persistentEntity = runtimeEntityRegistry.getEntity(preparedQuery.getRootEntity());
             List<SqlParameter> parameterList = new ArrayList<>();
             SqlPreparedQuery<T, R> sqlPreparedQuery = getSqlPreparedQuery(preparedQuery);
+            sqlQuery = sqlPreparedQuery.getQuery();
             sqlPreparedQuery.bindParameters(new SqlStoredQuery.Binder() {
 
                 @NonNull
@@ -474,7 +487,26 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
 
                 @Override
                 public void bindMany(@NonNull QueryParameterBinding binding, @NonNull Collection<Object> values) {
-                    bindOne(binding, values);
+                    // For IN/NOT IN criteria Cosmos won't return results for IN (@p1) because it expects IN (@p1, @p2,...)
+                    // so we must expand parameters and update query with newly created parameters
+                    // TODO: For ARRAY_CONTAINS it expects array and this will not be needed.
+                    String parameterName = getParameterName(binding, isRawQuery);
+                    StringJoiner stringJoiner = new StringJoiner(", ");
+                    int index = 0;
+                    for (Object value : values) {
+                        index++;
+                        int finalIndex = index;
+                        String finalParameterName = parameterName + "_expanded_" + index;
+                        stringJoiner.add("@" + finalParameterName);
+                        QueryParameterBinding newBinding = new DelegatingQueryParameterBinding(binding) {
+                            @Override
+                            public String getRequiredName() {
+                                return finalParameterName;
+                            }
+                        };
+                        bindOne(newBinding, value);
+                    }
+                    sqlQuery = sqlQuery.replace("@" + parameterName, stringJoiner.toString());
                 }
 
                 @Override
@@ -483,7 +515,7 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
                 }
 
             });
-            return parameterList;
+            return new SqlQuerySpec(sqlQuery, parameterList);
         }
 
         private String getParameterName(QueryParameterBinding binding, boolean isRawQuery) {

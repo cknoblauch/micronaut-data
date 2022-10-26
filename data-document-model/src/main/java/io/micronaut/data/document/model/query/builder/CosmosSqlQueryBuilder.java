@@ -33,7 +33,6 @@ import io.micronaut.data.model.PersistentProperty;
 import io.micronaut.data.model.PersistentPropertyPath;
 import io.micronaut.data.model.naming.NamingStrategies;
 import io.micronaut.data.model.naming.NamingStrategy;
-import io.micronaut.data.model.query.BindingParameter;
 import io.micronaut.data.model.query.JoinPath;
 import io.micronaut.data.model.query.QueryModel;
 import io.micronaut.data.model.query.builder.QueryParameterBinding;
@@ -64,45 +63,6 @@ public final class CosmosSqlQueryBuilder extends SqlQueryBuilder {
     private static final String SELECT_COUNT = VALUE + "COUNT(1)";
     private static final String JOIN = " JOIN ";
     private static final String IN = " IN ";
-
-    {
-        addCriterionHandler(QueryModel.In.class, (ctx, inQuery) -> {
-            QueryPropertyPath propertyPath = ctx.getRequiredProperty(inQuery.getProperty(), QueryModel.In.class);
-            StringBuilder whereClause = ctx.query();
-            Object value = inQuery.getValue();
-            boolean isBindingParameter = value instanceof BindingParameter;
-
-            if (isBindingParameter) {
-                whereClause.append(" ARRAY_CONTAINS(");
-                ctx.pushParameter((BindingParameter) value, newBindingContext(propertyPath.getPropertyPath()).expandable());
-                whereClause.append(COMMA);
-                appendPropertyRef(whereClause, propertyPath);
-            } else {
-                appendPropertyRef(whereClause, propertyPath);
-                whereClause.append(IN).append(OPEN_BRACKET);
-                asLiterals(ctx.query(), value);
-            }
-            whereClause.append(CLOSE_BRACKET);
-        });
-        addCriterionHandler(QueryModel.NotIn.class, (ctx, inQuery) -> {
-            QueryPropertyPath propertyPath = ctx.getRequiredProperty(inQuery.getProperty(), QueryModel.NotIn.class);
-            StringBuilder whereClause = ctx.query();
-            Object value = inQuery.getValue();
-            boolean isBindingParameter = value instanceof BindingParameter;
-
-            if (isBindingParameter) {
-                whereClause.append(NOT).append(" ARRAY_CONTAINS").append(OPEN_BRACKET);
-                ctx.pushParameter((BindingParameter) value, newBindingContext(propertyPath.getPropertyPath()).expandable());
-                whereClause.append(COMMA);
-                appendPropertyRef(whereClause, propertyPath);
-            } else {
-                appendPropertyRef(whereClause, propertyPath);
-                whereClause.append(SPACE).append(NOT).append(IN).append(OPEN_BRACKET);
-                asLiterals(ctx.query(), value);
-            }
-            whereClause.append(CLOSE_BRACKET);
-        });
-    }
 
     @Creator
     public CosmosSqlQueryBuilder(AnnotationMetadata annotationMetadata) {
