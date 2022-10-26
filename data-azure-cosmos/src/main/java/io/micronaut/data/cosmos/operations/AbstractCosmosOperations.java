@@ -89,6 +89,7 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -489,13 +490,17 @@ abstract class AbstractCosmosOperations extends AbstractRepositoryOperations imp
                 public void bindMany(@NonNull QueryParameterBinding binding, @NonNull Collection<Object> values) {
                     // For IN/NOT IN criteria Cosmos won't return results for IN (@p1) because it expects IN (@p1, @p2,...)
                     // so we must expand parameters and update query with newly created parameters
-                    // TODO: For ARRAY_CONTAINS it expects array and this will not be needed.
                     String parameterName = getParameterName(binding, isRawQuery);
+                    // This should find if there is IN (@p1) or NOT IN (@p1) which may or may not have spaces in between
+                    Pattern IN_PATTERN = Pattern.compile("IN\\s*\\(\\s*" + ("@" + parameterName) + "\\s*\\)", Pattern.CASE_INSENSITIVE);
+                    if (!IN_PATTERN.matcher(sqlQuery).find()) {
+                        bindOne(binding, values);
+                        return;
+                    }
                     StringJoiner stringJoiner = new StringJoiner(", ");
                     int index = 0;
                     for (Object value : values) {
                         index++;
-                        int finalIndex = index;
                         String finalParameterName = parameterName + "_expanded_" + index;
                         stringJoiner.add("@" + finalParameterName);
                         QueryParameterBinding newBinding = new DelegatingQueryParameterBinding(binding) {

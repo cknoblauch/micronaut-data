@@ -24,6 +24,12 @@ public interface NoPartitionKeyEntityRepository extends CrudRepository<NoPartiti
 
     int findMaxGradeByIdIn(List<String> ids);
 
+    int findSumGrade();
+
+    int findAvgGradeByNameIn(List<String> names);
+
+    int findMinGrade();
+
     void updateGrade(@Id String id, int grade);
 
     // This query should not update records because it is using partition key but

@@ -46,8 +46,14 @@ class NoPartitionKeyCosmosDbSpec extends Specification implements AzureCosmosTes
             repository.save(entity2)
         when:
             def maxGrade = repository.findMaxGradeByIdIn(Arrays.asList(entity1.id, entity2.id))
+            def sumGrade = repository.findSumGrade()
+            def avgGrade = repository.findAvgGradeByNameIn(Arrays.asList(entity1.name, entity2.name))
+            def minGrade = repository.findMinGrade()
         then:
             maxGrade == 4
+            sumGrade == 6
+            avgGrade == 3
+            minGrade == 2
         when:
             def entities = repository.findByGradeIn(Arrays.asList(entity2.grade))
         then:
